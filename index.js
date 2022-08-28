@@ -1,4 +1,7 @@
+// utiltities
+const nanoid = import('nanoid');
 const fs = require('fs');
+
 function input(message) {
 
   const readline = require('readline').createInterface({
@@ -7,11 +10,16 @@ function input(message) {
   });
   
   return new Promise((resolve, reject) => {
+
     try {
+      
       readline.question(message, result => {
+        
         resolve(result.trim());
         readline.close();
+
       });
+
     } catch (error) {
       reject(error);
     }
@@ -38,7 +46,7 @@ const writeFile = (path, data) => {
 
 const removeFile = (path) => {
   return new Promise((resolve, reject) => {
-    fs.rm(path, true, function (err) {
+    fs.rm(path, function (err) {
       if (!err) resolve(true)
       else reject(err)
     });
@@ -48,34 +56,46 @@ const removeFile = (path) => {
 
 
 // write data todo nanti disini
-const writeData = async (name) => {
+const writeData = async (id = null, todoMessage, status = false) => {
   try {
 
-    const studentPath = './students.json';
-    const students = await readFile(studentPath);
-    const newData = [...students, { name }]
-    const message = await writeFile(studentPath, newData) ;
+    id = !id ? (await nanoid).nanoid() : id;
+
+    const todoPath = './todos.json';
+    const todos = await readFile(todoPath);
+    const newData = [...todos, { id, todo: todoMessage, status }]
+    const message = await writeFile(todoPath, newData) ;
+
     console.log(message)
-    const dataUpdated = await readFile(studentPath);
+
+    const dataUpdated = await readFile(todoPath);
     console.log('data updated last', dataUpdated);
+    
   } catch(e) {
+
     console.log('error', e);
   }  
 }
 
 
 
-const readOneFile = async (name) => {
+const readOneFile = async (id = null) => {
   try {
 
-    const studentPath = './students.json';
-    const data = await readFile(studentPath);
-    console.log('students', data);
-    for (const student of data) {
+    if (!id) console.error('id not provided!');
 
-      console.log('name', student.name)
-      if(student.name === name)  {
-        console.log('students found', name);
+    const todoPath = './todos.json';
+    const data = await readFile(todoPath);
+    
+    console.log('todos', data);
+    // console.log(Array.from(data).includes({ todoMessage }) ? `todo ${todoMessage} found!` : `todo ${todoMessage} not found!`)
+    
+    for (const todo of data) {
+
+      if(todo.id === id)  {
+        console.log('todos found!');
+        console.log('todoMessage', todo.todo);
+        console.log('status', todo.status);
         break;
       }
     }
@@ -86,68 +106,74 @@ const readOneFile = async (name) => {
 
 const readAllFile = async () => {
   // logic here to get all file
-  const studentPath = './students.json';
-  const data = await readFile(studentPath);
-  for (const student of data) {
+  const todoPath = './todos.json';
+  const data = await readFile(todoPath);
+  for (const todo of data) {
 
-    console.log('name', student.name);
+    console.log('id', todo.id);
+    console.log('todoMessage', todo.todo);
+    console.log('status', todo.status ? 'active' : 'deactive');
   }
 }
 
 
-const updateFile = async (name, newName) => {
+const updateFile = async (id, todoMessage, status = false) => {
   // / logic here for udpate one data
-  const studentPath = './students.json';
+  const todoPath = './todos.json';
 
-  let data = await readFile(studentPath);
+  let data = await readFile(todoPath);
 
-  const check = Array.from(data).filter(o => o.name === name).length > 0;
+  const check = Array.from(data).filter(o => o.id === id).length > 0;
 
   if (!check) {
-    console.log('siswa tidek ditemukan!')
+    console.log('todo tidek ditemukan!')
     return
   }
 
   data = data.map(o => {
 
-    if (o.name === name) return { name: newName }
+    if (!status) status = o.status;
+    if (o.id === id) return { id: o.id, todo: todoMessage, status,}
     return o
   })
 
-  const message = await writeFile(studentPath, data);
-  console.log('student data has been updated, maybe I can not guarantee');
+  const message = await writeFile(todoPath, data);
+
+  console.log('todo sudah di update, mungkin saya tidak menjamin');
   console.log(message);
 }
 
 const writeNewData = async (data = []) => {
 
-  const studentPath = './students.json';
-  const message = await writeFile(studentPath, data);
+  const todoPath = './todos.json';
+  const message = await writeFile(todoPath, data);
 
   console.log(message);
 }
 
-const deleteOneData = async (name) => {
+const deleteOneData = async (id) => {
   // / logic here for udpate one data
-  const studentPath = './students.json';
+  const todoPath = './todos.json';
 
-  const data = await readFile(studentPath);
+  const data = await readFile(todoPath);
 
-  const check = Array.from(data).filter(o => o.name === name).length > 0;
+  const check = Array.from(data).filter(o => o.id === id).length > 0;
 
   if (!check) {
-    console.log('Student not found!')
+    console.log('todo tidek ditemukan!')
     return
   }
+
+  let deleted = false;
 
   while (true) {
 
     let count = 0;
     let index = -1;
 
-    for (const student of data) {
+    for (const todo of data) {
 
-      if (student.name === name) {
+      if (todo.id === id) {
 
         index = count;
         break;
@@ -155,19 +181,24 @@ const deleteOneData = async (name) => {
       count++;
     }
 
-    if (index > 0) data.splice(index, 1);
+    if (index > -1) {
+
+      data.splice(index, 1);
+      deleted = true;
+    }
     else break;
   }
 
-  const message = await writeFile(studentPath, data);
-  console.log('student data has been deleted, maybe I can not guarantee');
+  const message = await writeFile(todoPath, data);
+
+  if (deleted) console.log('data todo sudah di delete');
   console.log(message);
 }
 
 const deleteData = async () => {
   
-  const studentPath = './students.json';
-  const status = removeFile(studentPath);
+  const todoPath = './todos.json';
+  const status = removeFile(todoPath);
   if (status) console.log('file has been removed!');
 }
 
@@ -179,33 +210,41 @@ async function clearPrompt() {
 
 async function init() {
 
-	const studentPath = './students.json';
+	const todoPath = './todos.json';
+	
+  // writeData
+  // readOneFile
+  // readAllFile
+  // updateFile
+  // writeNewData
+  // deleteOneData
+  // deleteData
 
   let terminate = false;
   while (true) {
 
-    if (!fs.existsSync(studentPath)) {
+    if (!fs.existsSync(todoPath)) {
 
-      const prm = await input('Do you want to create a student.json file? type [Y/n]: ');
+      const prm = await input('kamu mau membuat file todos.json ? ketik [Y/n]: ');
     
       if (prm.toLowerCase() === 'y') await writeNewData();
       else {
 
-        console.log('Because students.json does not exist, this application cannot be continued, sorry!');
+        console.log('karena todos.json tidak ada, maka aplikasi ini tidak bisa dilanjutkan, mohon maaf!');
         break;
       }
     }
 
-    console.log('1. Create Student');
-    console.log('2. Search Student');
-    console.log('3. Show All')
-    console.log('4. Update Name Student')
-    console.log('5. Create New Data (Kosong)')
-    console.log('6. Delete Name Student')
-    console.log('7. Delete All Student')
+    console.log('1. tambah todo')
+    console.log('2. cari todo')
+    console.log('3. lihat keseluruhan')
+    console.log('4. perbarui todo')
+    console.log('5. bikin todo baru')
+    console.log('6. hapus todo')
+    console.log('7. hapus semua todo')
     console.log('8. exit')
 
-    const xin = await input("Choose number: ");
+    const xin = await input('memilih nomer: ');
 
     console.clear();
 
@@ -213,12 +252,12 @@ async function init() {
 
       case '1':
 
-        await writeData(await input('Please enter the name of the new student: '));
+        await writeData(null, await input('silahkan masukan todo pesan: '), (await input('status [1/0]: ')) === '1' ? true : false);
         break;
 
       case '2':
 
-        await readOneFile(await input('Please enter the name of the new student: '));
+        await readOneFile(await input('silahkan masukan id todo: '));
         break;
 
       case '3':
@@ -228,7 +267,7 @@ async function init() {
 
       case '4':
 
-        await updateFile(await input('Please enter the name of the old student: '), await input('Please enter the name of the new student: '));
+        await updateFile(await input('silahkan masukan id: '), await input('silahkan masukan todo pesan: '), (await input('status [1/0]: ')) === '1' ? true : false);
         break;
 
       case '5':
@@ -238,7 +277,7 @@ async function init() {
 
       case '6':
 
-        await deleteOneData(await input('Please enter student name: '));
+        await deleteOneData(await input('silahkan masukan id todo: '));
         break;
 
       case '7':
@@ -253,7 +292,7 @@ async function init() {
     
       default:
         
-        console.log('Option does not exist, please try again!');
+        console.log('pilihan tidak ada, silahkan coba lagi!');
         break;
     }
 
@@ -264,3 +303,22 @@ async function init() {
 }
 
 init();
+
+// nanoid.then((nn) => {
+
+//   const id = nn.nanoid(); // generated random id
+//   writeData(id, 'hari ini cuaca nya cerah', true).then(async () => {
+
+//     console.log('nambah data');
+
+//     // procedure
+//     await readOneFile(id);
+
+//     await readAllFile();
+
+//     await updateFile(id, 'hari ini cuaca nya hujan', false);
+
+//     await deleteOneData(id);
+//     // await deleteData();
+//   });
+// });
